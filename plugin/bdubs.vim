@@ -16,14 +16,6 @@ function! s:Reject(list, reject_func)
   return filter(a:list, '!('.a:reject_func.')')
 endfunction
 
-function! s:Pluralize(count, singular_form, plural_form)
-  if a:count == 1
-    return a:count." ".a:singular_form
-  else
-    return a:count." ".a:plural_form
-  endif
-endfunction
-
 function! s:BufferNotListed(buffer_number)
   return !buflisted(a:buffer_number)
 endfunction
@@ -158,8 +150,7 @@ function! s:BuffersToRemove(filters)
   return buffer_list
 endfunction
 
-function! s:DeleteBuffers(args, bang)
-  let number_of_buffers_to_preserve = str2nr(a:args[0])
+function! s:DeleteBuffers(bang)
   let filters = ['s:BufferIsCurrent']
   let filters += ['s:BufferNotListed']
   if a:bang != '!'
@@ -167,44 +158,33 @@ function! s:DeleteBuffers(args, bang)
   endif
 
   let buffer_list = s:BuffersToRemove(filters)
-  if number_of_buffers_to_preserve > 1
-    let preserve_count = number_of_buffers_to_preserve - 1
-    let mru_files_to_preserve = s:MRU_files[0:preserve_count]
-    let mru_buffer_numbers = map(mru_files_to_preserve, 'bufnr(v:val."$")')
-    let buffer_list = filter(buffer_list, 'index(mru_buffer_numbers, v:val) == -1')
-  endif
+  let preserve_count = 15 - 1
+  let mru_files_to_preserve = s:MRU_files[0:preserve_count]
+  let mru_buffer_numbers = map(mru_files_to_preserve, 'bufnr(v:val."$")')
+  let buffer_list = filter(buffer_list, 'index(mru_buffer_numbers, v:val) == -1')
   let buffer_count = len(buffer_list)
 
   for buffer_number in buffer_list
     execute buffer_number.'bd'.a:bang
   endfor
-
-  let msg_prefix = s:Pluralize(buffer_count, "buffer", "buffers")
-  echomsg msg_prefix." deleted"
 endfunction
 
 function! s:WipeoutBuffers(args, bang)
-  let number_of_buffers_to_preserve = str2nr(a:args[0])
   let filters = ['s:BufferIsCurrent']
   if a:bang != '!'
     let filters += ['s:BufferIsModified']
   endif
 
   let buffer_list = s:BuffersToRemove(filters)
-  if number_of_buffers_to_preserve > 1
-    let preserve_count = number_of_buffers_to_preserve - 1
-    let mru_files_to_preserve = s:MRU_files[0:preserve_count]
-    let mru_buffer_numbers = map(mru_files_to_preserve, 'bufnr(v:val."$")')
-    let buffer_list = filter(buffer_list, 'index(mru_buffer_numbers, v:val) == -1')
-  endif
+  let preserve_count = 15 - 1
+  let mru_files_to_preserve = s:MRU_files[0:preserve_count]
+  let mru_buffer_numbers = map(mru_files_to_preserve, 'bufnr(v:val."$")')
+  let buffer_list = filter(buffer_list, 'index(mru_buffer_numbers, v:val) == -1')
   let buffer_count = len(buffer_list)
 
   for buffer_number in buffer_list
     execute buffer_number.'bw'.a:bang
   endfor
-
-  let msg_prefix = s:Pluralize(buffer_count, "buffer", "buffers")
-  echomsg msg_prefix." wiped out"
 endfunction
 
 " Load the MRU list on plugin startup
@@ -218,9 +198,8 @@ autocmd BufWritePost * call s:MRU_AddFile(expand('<abuf>'))
 autocmd QuickFixCmdPre *vimgrep* let s:mru_list_locked = 1
 autocmd QuickFixCmdPost *vimgrep* let s:mru_list_locked = 0
 
-command! -nargs=* -bang BD call s:DeleteBuffers( '<args>', '<bang>' )
-command! -nargs=* -bang BW call s:WipeoutBuffers( '<args>', '<bang>' )
-
+command -bang BD call s:DeleteBuffers('<bang>')
+command -bang BW call s:WipeoutBuffers('<bang>')
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
