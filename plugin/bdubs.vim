@@ -1,4 +1,4 @@
-" bdubs.vim - quickly delete and wipeout buffers
+" bdubs.vim - quickly delete buffers
 " Author: Josh Branchaud (joshbranchaud.com)
 " Version: 0.1
 
@@ -150,7 +150,7 @@ function! s:BuffersToRemove(filters)
   return buffer_list
 endfunction
 
-function! s:DeleteBuffers(bang)
+function! s:DeleteBuffers(close, bang)
   let filters = ['s:BufferIsCurrent']
   let filters += ['s:BufferNotListed']
   if a:bang != '!'
@@ -165,25 +165,11 @@ function! s:DeleteBuffers(bang)
   let buffer_count = len(buffer_list)
 
   for buffer_number in buffer_list
-    execute buffer_number.'bd'.a:bang
-  endfor
-endfunction
-
-function! s:WipeoutBuffers(args, bang)
-  let filters = ['s:BufferIsCurrent']
-  if a:bang != '!'
-    let filters += ['s:BufferIsModified']
-  endif
-
-  let buffer_list = s:BuffersToRemove(filters)
-  let preserve_count = 15 - 1
-  let mru_files_to_preserve = s:MRU_files[0:preserve_count]
-  let mru_buffer_numbers = map(mru_files_to_preserve, 'bufnr(v:val."$")')
-  let buffer_list = filter(buffer_list, 'index(mru_buffer_numbers, v:val) == -1')
-  let buffer_count = len(buffer_list)
-
-  for buffer_number in buffer_list
-    execute buffer_number.'bw'.a:bang
+    if a:close
+      execute 'BufClose'.buffer_number.a:bang
+    else
+      execute buffer_number.'bd'.a:bang
+    endif
   endfor
 endfunction
 
@@ -198,8 +184,8 @@ autocmd BufWritePost * call s:MRU_AddFile(expand('<abuf>'))
 autocmd QuickFixCmdPre *vimgrep* let s:mru_list_locked = 1
 autocmd QuickFixCmdPost *vimgrep* let s:mru_list_locked = 0
 
-command -bang BD call s:DeleteBuffers('<bang>')
-command -bang BW call s:WipeoutBuffers('<bang>')
+command -bang MRUClose call s:DeleteBuffers(1, '<bang>')
+command -bang MRUDelete call s:DeleteBuffers(0, '<bang>')
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
